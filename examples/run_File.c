@@ -849,5 +849,68 @@ void file_sort()
     run_unmount();
 }
 
+/* 
+    Shuffle the image names in the file - ADDED FUNCTION by tcellerier - 2023-11
+*/
+void file_shuffle()
+{
+    char temp[fileNumber][fileLen];
+
+    run_mount();
+
+    FRESULT fr; /* Return value */
+    FIL fil;
+
+    // 1. Read filelist
+    fr = f_open(&fil, fileList, FA_READ);
+
+    if(FR_OK != fr && FR_EXIST != fr) {
+        printf("Shuffle - file open error2\r\n");
+        run_unmount();
+        return;
+    }
+
+    char buf[256];
+    int nbLines=0;
+    while (f_gets(buf, sizeof buf, &fil)) 
+    {
+        strcpy(temp[nbLines], buf);
+        nbLines++;
+    }
+    printf("Shuffle - Nb lines read: %d \n", nbLines);
+
+    fr = f_close(&fil);
+    if (FR_OK != fr) {
+        printf("Shuffle - f_close error: %s (%d)\n", FRESULT_str(fr), fr);
+    }
+
+    // Seed the random number generator
+    srand(nbLines);
+
+    // 2. Shuffle lines
+    for (int i = nbLines - 1; i > 0; i--) {
+        int j = rand() % (i + 1);
+        char temp_shuffle[fileLen]; 
+        strcpy(temp_shuffle, temp[i]);
+        strcpy(temp[i], temp[j]);
+        strcpy(temp[j], temp_shuffle);
+    }
+
+    // 3. Save new list
+    fr = f_open(&fil, fileList, FA_CREATE_ALWAYS | FA_WRITE);
+    if(FR_OK != fr && FR_EXIST != fr)
+        panic("Shuffle - f_open1(%s) error: %s (%d) \n", fileList, FRESULT_str(fr), fr);
+
+    file_puts(temp, nbLines, &fil);
+    //printf("ls %s\r\n", fileList);
+    printf("Shuffle - Done\n");
+
+    fr = f_close(&fil);
+    if (FR_OK != fr) {
+        printf("Shuffle - f_close error: %s (%d)\n", FRESULT_str(fr), fr);
+    }
+
+    run_unmount();
+}
 
 
